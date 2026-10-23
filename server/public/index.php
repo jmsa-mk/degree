@@ -38,6 +38,7 @@ try {
         reply(newToken($db,$user));
     }
     $user=tokenUser($db);$id=(string)$user['id'];
+    if(str_starts_with($route,'/support/')){require dirname(__DIR__).'/support.php';supportRoutes($db,$user,$route,$method,$body);}
     if($route==='/logout'&&$method==='POST') {query($db,'DELETE FROM db_tokens WHERE token_hash=?',[hash('sha256',substr($_SERVER['HTTP_AUTHORIZATION'],7))]);reply(['ok'=>true]);}
     if($route==='/profile'&&$method==='GET')reply(['user'=>publicUser($user),'subscription'=>subscription($db,$id),'stats'=>stats($db,$id),'leaderboard'=>leaderboard($db,$id)]);
     if($route==='/entitlement'&&$method==='GET')reply(['subscription'=>subscription($db,$id)]);

@@ -23,9 +23,9 @@ try{
  assert.equal(await page.getByRole('button',{name:'Start focus',exact:true}).isVisible(),false);
  await page.getByRole('button',{name:'Account',exact:true}).click();
  const text=await page.locator('body').innerText();assert.ok(!/XAMPP|Server URL|Account server|prototype|Guest|localhost|127\.0\.0\.1/.test(text));
- assert.match(text,/25\.000/);assert.match(text,/No real payment is required/);
+ assert.match(text,/50\.000/);assert.match(text,/No real payment is required/);
  await page.screenshot({path:path.resolve('test-output/customer-subscription.png'),fullPage:true});
- const state=await page.evaluate(()=>window.degreebee.state());assert.equal(state.account.subscription.plan.priceRupiah,25000);assert.equal(state.account.subscription.status,'inactive');assert.equal(state.account.canMonitor,false);assert.equal('server' in state.account,false);
+ const state=await page.evaluate(()=>window.degreebee.state());assert.equal(state.account.subscription.plan.priceRupiah,50000);assert.equal(state.account.subscription.status,'inactive');assert.equal(state.account.canMonitor,false);assert.equal('server' in state.account,false);
  const request=async(route,method,body)=>{const r=await fetch(serviceConfig.apiUrl+route,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+member.token},body:body?JSON.stringify(body):undefined});return {status:r.status,body:await r.json()};};
  assert.equal((await request('/subscription','POST',{status:'active',price:0})).status,404);
  await request('/profile','PATCH',{leaderboard:false,subscription:{status:'active'}});
@@ -49,6 +49,6 @@ try{
  await waitForState(page,s=>!s.account.syncing);
  await page.evaluate(()=>window.degreebee.accountLogout());await page.getByRole('heading',{name:'Welcome back',exact:true}).waitFor();
  assert.match(await denied(page,'start'),/sign in/i);assert.deepEqual(errors,[]);
- console.log('PASS: guest blocked at UI and IPC; inactive/expired/canceled subscriptions denied; IDR 25000 database plan; arbitrary subscription writes denied; active member start/resume; automatic expiry pause; logout relock; no customer server controls.');
+ console.log('PASS: guest blocked at UI and IPC; inactive/expired/canceled subscriptions denied; IDR 50000 database plan; arbitrary subscription writes denied; active member start/resume; automatic expiry pause; logout relock; no customer server controls.');
 }finally{if(app)await app.evaluate(({app})=>app.exit(0)).catch(()=>{});await removeMember(member);}
 

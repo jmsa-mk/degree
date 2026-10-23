@@ -22,6 +22,7 @@ const { renderReport } = require("./report-export.cjs");
 const { AttentionTracker, AttentionAlerts } = require("./attention.cjs");
 const { PreferenceStore } = require("./preferences.cjs");
 const { AccountClient } = require("./accounts.cjs");
+const { supportRequest } = require("./support-client.cjs");
 let account, accountBusy = false, monitorBusy = false, verificationBusy = false, nextVerification = 0, accessError = '';
 let attention = new AttentionTracker(),
   alertPolicy = new AttentionAlerts(),
@@ -318,6 +319,10 @@ else {
       updateTray();
 
       handle("focus:state", current);
+      handle('support:request', async (action,input) => {
+        if(accountBusy&&!['summary','list','detail','read'].includes(action))throw new Error('Please wait for the account update to finish.');
+        try{return await supportRequest(account,action,input);}finally{if(account.authExpired)publish();}
+      });
       const accountAction = (callback, changesIdentity = false) => async (...args) => {
         if (accountBusy || account.syncing || monitorBusy || verificationBusy) throw new Error("An account update is in progress. Please wait.");
         if (changesIdentity && active) throw new Error("Finish or delete your session before changing accounts.");

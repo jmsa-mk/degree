@@ -1,0 +1,48 @@
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import {createMember,removeMember} from './member-fixture.mjs';
+import config from '../electron/service-config.cjs';
+let customer,other,staff;
+const role=(action,m)=>execFileSync('C:\\xampp\\php\\php.exe',['server/support-admin.php',action,m.email],{windowsHide:true,stdio:'pipe'});
+async function req(m,route,method='GET',body,status=200){const r=await fetch(config.apiUrl+route,{method,headers:{'Content-Type':'application/json',...(m?{Authorization:'Bearer '+m.token}:{})},body:body?JSON.stringify(body):undefined});const data=await r.json();assert.equal(r.status,status,JSON.stringify(data));return data;}
+try{
+  customer=await createMember();other=await createMember();staff=await createMember();role('grant',staff);
+  await req(null,'/support/tickets','GET',null,401);
+  assert.equal((await req(customer,'/support/summary')).staff,false);
+  assert.equal((await req(staff,'/support/summary')).staff,true);
+  await req(customer,'/support/tickets?scope=desk','GET',null,403);
+  await req(customer,'/support/tickets','POST',{requestId:randomUUID(),subject:'  ',category:'camera',message:'hello'},400);
+  await req(customer,'/support/tickets','POST',{requestId:randomUUID(),subject:'My camera',category:'unknown',message:'A valid message long enough'},400);
+  const input={requestId:randomUUID(),subject:'Camera calibration question',category:'camera',message:'My glasses reflect the screen. How can I calibrate?',author_role:'support',user_id:other.user.id};
+  const created=await req(customer,'/support/tickets','POST',input,201);const id=created.ticket.id;
+  assert.equal(created.messages[0].role,'customer');assert.equal(created.ticket.status,'open');
+  assert.equal((await req(customer,'/support/tickets','POST',input)).ticket.id,id);
+  await req(customer,'/support/tickets','POST',{...input,subject:'Different request'},409);
+  assert.equal((await req(customer,'/support/tickets')).total,1);
+  assert.equal((await req(other,'/support/tickets')).total,0);
+  for(const suffix of ['', '/messages','/status','/read'])await req(other,'/support/tickets/'+id+suffix,suffix?'POST':'GET',suffix?{requestId:randomUUID(),message:'Trying another account',status:'resolved',messageId:created.messages[0].id}:null,404);
+  const reply={requestId:randomUUID(),message:'Please reduce reflections, then calibrate with your eyes open.'};
+  const answered=await req(staff,`/support/tickets/${id}/messages?scope=desk`,'POST',reply);
+  assert.equal(answered.ticket.status,'awaiting_customer');assert.equal(answered.messages.at(-1).role,'support');
+  const repeated=await req(staff,`/support/tickets/${id}/messages?scope=desk`,'POST',reply);assert.equal(repeated.messages.length,2);
+  assert.equal((await req(customer,'/support/summary')).unread,1);
+  await req(customer,`/support/tickets/${id}/read`,'POST',{messageId:answered.messages.at(-1).id});
+  assert.equal((await req(customer,'/support/summary')).unread,0);
+  const dangerous='<img src=x onerror=alert(1)> & camera details';
+  const followup=await req(customer,`/support/tickets/${id}/messages`,'POST',{requestId:randomUUID(),message:dangerous,author_role:'support'});
+  assert.equal(followup.messages.at(-1).body,dangerous);assert.equal(followup.messages.at(-1).role,'customer');assert.equal(followup.ticket.status,'open');
+  const statusRequest={requestId:randomUUID(),status:'resolved'};
+  const resolved=await req(customer,`/support/tickets/${id}/status`,'POST',statusRequest);assert.equal(resolved.ticket.status,'resolved');
+  const repeatedStatus=await req(customer,`/support/tickets/${id}/status`,'POST',statusRequest);assert.equal(repeatedStatus.messages.length,resolved.messages.length);
+  await req(customer,`/support/tickets/${id}/messages`,'POST',{requestId:randomUUID(),message:'Reply after closing'},409);
+  await req(customer,`/support/tickets/${id}/status`,'POST',{requestId:randomUUID(),status:'open'});
+  role('revoke',staff);await req(staff,`/support/tickets/${id}?scope=desk`,'GET',null,403);role('grant',staff);
+  for(let i=0;i<48;i++)await req(staff,`/support/tickets/${id}/messages?scope=desk`,'POST',{requestId:randomUUID(),message:'Pagination check '+i});
+  const newest=await req(customer,`/support/tickets/${id}`);assert.equal(newest.messages.length,50);assert.equal(newest.hasEarlier,true);
+  const earlier=await req(customer,`/support/tickets/${id}?before=${newest.messages[0].id}`);assert.ok(earlier.messages.length>0);assert.equal(earlier.hasEarlier,false);
+  assert.ok(Number(earlier.messages.at(-1).id)<Number(newest.messages[0].id));
+  assert.equal((await req(staff,'/support/tickets?scope=desk&status=awaiting_customer')).tickets.some(t=>t.id===id),true);
+  await removeMember(customer);customer=null;await req(staff,`/support/tickets/${id}?scope=desk`,'GET',null,404);
+  console.log('PASS: support auth/roles, customer isolation, inactive-member access, validation, request/reply/status idempotency, real staff replies, unread receipts, resolve/reopen, role revocation, message pagination, literal user text, and account deletion cleanup.');
+}finally{await removeMember(customer);await removeMember(other);await removeMember(staff);}

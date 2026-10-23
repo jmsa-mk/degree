@@ -4,6 +4,7 @@ import { useCamera } from "./useCamera";
 import { StudySettings, DailyGoal, DEFAULT_UI_SETTINGS } from "./StudySettings";
 import { summarizeReport, dailyProgress } from "./report-insights.mjs";
 import { ProgressPage } from "./Community";
+import { HelpSupport } from "./HelpSupport";
 import { AccountPage, SubscriptionCard } from "./CustomerAccount";
 import "./styles.css";
 
@@ -369,6 +370,7 @@ function App() {
     [busy, setBusy] = useState(false),
     [query, setQuery] = useState("");
   const [deleteId, setDeleteId] = useState(null);
+  const [supportInfo,setSupportInfo] = useState({staff:false,unread:0});
   const [savedReport, setSavedReport] = useState(null);
   const [theme, setTheme] = useState(
     () => localStorage.getItem("theme") || "light",
@@ -403,6 +405,12 @@ function App() {
     api.history().then(setHistory).catch(e=>setError(e.message));
   }, [state.account?.user?.id]);
   async function accountChanged(next) { setState(next); setHistory(await api.history()); }
+  useEffect(()=>{
+    let alive=true;setSupportInfo({staff:false,unread:0});
+    const refresh=()=>{if(signedIn)api.support('summary').then(data=>{if(alive)setSupportInfo(data);}).catch(()=>{});};
+    refresh();const timer=setInterval(refresh,30000);
+    return()=>{alive=false;clearInterval(timer);};
+  },[signedIn,state.account?.user?.id]);
   useEffect(() => {
     if (camera.error) {
       setError(camera.error);
@@ -500,7 +508,7 @@ function App() {
               ["progress", "check", "Progress & league"],
               ["reports", "report", "Report history"],
               ["account", "shield", "Account"],
-              ["guide", "info", "Guide & data"],
+              ["support", "info", "Help & support"],
             ].map(([key, icon, label]) => (
               <button
                 key={key}
@@ -509,10 +517,12 @@ function App() {
               >
                 <Icon name={icon} />
                 {label}
+                {key==='support'&&supportInfo.unread>0&&<span className="support-count">{supportInfo.unread}</span>}
               </button>
             ))}
           </nav>}
           <div className="header-right">
+            {!signedIn&&<button className="text-button" onClick={()=>setPage(page==='support'?'monitor':'support')}>{page==='support'?'Back to sign in':'Help & support'}</button>}
             <span className="offline-pill">
               <i className={`dot ${signedIn?'focused':'unobserved'}`} />
               {signedIn ? state.account.syncing ? 'Syncing' : 'Signed in' : 'Sign in required'}
@@ -540,7 +550,7 @@ function App() {
           {!signedIn ? <>
             {displayError && <div className="notice error" role="alert">{displayError}</div>}
             {active && <div className="notice"><span>Your session is paused. Save it before signing in again.</span><button className="secondary" onClick={()=>action(finish)}>Finish & save</button></div>}
-            <AccountPage account={state.account} active={active} busy={busy} run={action} onChange={accountChanged}/>
+            {page==='support'?<HelpSupport key="guest-support" info={supportInfo} onSummary={setSupportInfo} onSignIn={()=>setPage('monitor')} onNavigate={setPage}/>:<AccountPage account={state.account} active={active} busy={busy} run={action} onChange={accountChanged}/>}
           </> : <>
           {!state.compact && <div className="experience-bar"><span>Workspace</span><div className="activity-options"><button aria-pressed={experience==='personal'} onClick={()=>{setExperience('personal');localStorage.setItem('experience','personal');setPage('progress');}}>Personal</button><button aria-pressed={experience==='reports'} onClick={()=>{setExperience('reports');localStorage.setItem('experience','reports');setPage('reports');}}>Reports</button></div><span className="muted">{experience==='personal'?'Build your habit with XP, badges and a weekly league.':'Review saved observations and export reports for sharing.'}</span></div>}
           {displayError && (
@@ -570,6 +580,7 @@ function App() {
             </div>
           )}
           {page === 'progress' && !state.compact && <ProgressPage account={state.account} reports={history.sessions} busy={busy} onStart={()=>setPage('monitor')} onAccount={()=>setPage('account')} onRefresh={()=>action(async()=>accountChanged(await api.accountSync()))}/>}
+          {page === 'support' && !state.compact && <HelpSupport key={state.account.user.id} user={state.account.user} info={supportInfo} onSummary={setSupportInfo} onSignIn={()=>setPage('account')} onNavigate={setPage}/>}
           {page === 'account' && !state.compact && <AccountPage account={state.account} active={active} busy={busy} run={action} onChange={accountChanged}/>}
           {page === 'monitor' && !subscribed && !active && <SubscriptionCard account={state.account} busy={busy} onRefresh={()=>action(async()=>accountChanged(await api.accountRefresh()))} onActivate={async()=>{await accountChanged(await api.accountDemoActivate());setError('');setMessage('Demo access activated. You can now start your focus session.');}}/>}
           <div hidden={(page !== "monitor" && !state.compact) || (!subscribed && !active)}>

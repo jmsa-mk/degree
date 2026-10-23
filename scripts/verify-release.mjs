@@ -18,7 +18,7 @@ if (!port) {
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
   spawn(
-    path.resolve("release/DegreeBee-Focus-2.2.1-x64.exe"),
+    path.resolve("release/DegreeBee-Focus-2.3.1-x64.exe"),
     [`--remote-debugging-port=${port}`],
     { env, windowsHide: true, stdio: "ignore" },
   );
@@ -76,8 +76,13 @@ try {
   assert.equal(await page.evaluate(()=>typeof window.degreebee.accountServer),'undefined');
   assert.ok(!/XAMPP|Server URL|Account server|Guest|localhost|127\.0\.0\.1/.test(await page.locator('body').innerText()));
   await page.screenshot({ path: path.resolve("test-output/release.png") });
+  await page.getByRole('button',{name:/^Help & support/}).click();
+  await page.getByRole('heading',{name:'Let’s get you back on track.'}).waitFor();
+  await page.getByLabel('Search the help center').fill('glasses');
+  assert.equal(await page.locator('.support-faq details').count(),1);
+  await page.screenshot({path:path.resolve('test-output/release-support.png'),fullPage:true});
   console.log(
-    "PASS: portable v2.2.1 EXE launched; customer sign-in/membership screen, no guest or server controls, no exposed tokens/server URL, default AI access denied, bundled model/audio/logo, and camera-off default verified.",
+    "PASS: portable v2.3.1 EXE launched directly; bundled Help & support/search, sign-in/membership screen, no guest/server controls or tokens, default AI access denied, bundled model/audio/logo, and camera-off default verified.",
   );
   await page.close();
 } finally {

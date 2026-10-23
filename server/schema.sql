@@ -1,6 +1,6 @@
 -- DegreeBee Focus: complete schema for MySQL / MariaDB (XAMPP).
 -- Import this ONE file through phpMyAdmin > Import, or the mysql client.
--- Creates degree if absent, all 9 tables, and the IDR 25,000 monthly plan.
+-- Creates degree if absent, all 12 tables, and the IDR 50,000 monthly plan.
 -- Contains no real users, passwords, tokens, reports, or payment records.
 -- Re-import preserves existing rows, plan prices, and subscription access.
 -- CREATE TABLE IF NOT EXISTS does not repair incompatible existing table layouts.
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS db_plans (
  billing_interval VARCHAR(10) NOT NULL DEFAULT 'month'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 INSERT INTO db_plans(code,name,price_rupiah,currency,billing_interval)
-VALUES ('focus_monthly','DegreeBee Focus',25000,'IDR','month')
+VALUES ('focus_monthly','DegreeBee Focus',50000,'IDR','month')
 ON DUPLICATE KEY UPDATE code=VALUES(code);
 CREATE TABLE IF NOT EXISTS db_subscriptions (
  user_id BIGINT UNSIGNED PRIMARY KEY,
@@ -88,4 +88,39 @@ CREATE TABLE IF NOT EXISTS db_demo_access (
  starts_at DATETIME NOT NULL,
  expires_at DATETIME NOT NULL,
  FOREIGN KEY(user_id) REFERENCES db_users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Support access is granted by an operator, never by registration or the public API.
+CREATE TABLE IF NOT EXISTS db_support_staff (
+ user_id BIGINT UNSIGNED PRIMARY KEY,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY(user_id) REFERENCES db_users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS db_support_tickets (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ user_id BIGINT UNSIGNED NOT NULL,
+ request_id CHAR(36) NOT NULL,
+ subject VARCHAR(100) NOT NULL,
+ category ENUM('camera','account','subscription','reports','feedback','other') NOT NULL,
+ status ENUM('open','awaiting_customer','resolved') NOT NULL DEFAULT 'open',
+ last_read_message_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE KEY support_request(user_id,request_id),
+ INDEX support_owner(user_id,updated_at,id),
+ INDEX support_queue(status,updated_at,id),
+ FOREIGN KEY(user_id) REFERENCES db_users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS db_support_messages (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ ticket_id BIGINT UNSIGNED NOT NULL,
+ author_id BIGINT UNSIGNED NULL,
+ author_role ENUM('customer','support','system') NOT NULL,
+ request_id CHAR(36) NOT NULL,
+ body TEXT NOT NULL,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE KEY support_message_request(ticket_id,request_id),
+ INDEX support_conversation(ticket_id,id),
+ FOREIGN KEY(ticket_id) REFERENCES db_support_tickets(id) ON DELETE CASCADE,
+ FOREIGN KEY(author_id) REFERENCES db_users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

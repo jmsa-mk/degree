@@ -16,3 +16,4 @@ foreach(['db_users','db_tokens','db_sessions','db_session_days','db_rate_limits'
     $root->exec("GRANT SELECT,INSERT,UPDATE,DELETE ON degree.$table TO 'degreebee_app'@'127.0.0.1'");
 echo "DegreeBee tables ready in degree. Existing data preserved.\n";
 require __DIR__.'/migrate-subscriptions.php';
+require __DIR__.'/migrate-support.php';

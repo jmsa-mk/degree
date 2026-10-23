@@ -13,6 +13,7 @@ coverage/
 # Local service credentials and signing keys (keep the example config)
 config.local.php
 config.*.local.php
+*.local.txt
 .env
 .env.*
 !.env.example

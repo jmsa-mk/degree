@@ -14,9 +14,9 @@ try {
     $db->exec($sql);
     $tables=$db->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
     sort($tables);
-    $expected=['db_demo_access','db_plans','db_rate_limits','db_session_days','db_sessions','db_subscription_events','db_subscriptions','db_tokens','db_users'];
+    $expected=['db_demo_access','db_plans','db_rate_limits','db_session_days','db_sessions','db_subscription_events','db_subscriptions','db_support_messages','db_support_staff','db_support_tickets','db_tokens','db_users'];
     check($tables===$expected, 'Incomplete schema.');
-    check((int)$db->query("SELECT price_rupiah FROM db_plans WHERE code='focus_monthly'")->fetchColumn()===25000, 'Missing monthly plan seed.');
+    check((int)$db->query("SELECT price_rupiah FROM db_plans WHERE code='focus_monthly'")->fetchColumn()===50000, 'Missing monthly plan seed.');
     check((int)$db->query('SELECT COUNT(*) FROM db_users')->fetchColumn()===0, 'Schema must not contain user data.');
     $db->exec("INSERT INTO db_users(id,email,display_name,password_hash) VALUES (1,'schema-test@example.test','Schema test','test-only'),(2,'schema-second@example.test','Second test','test-only')");
     $db->exec("INSERT INTO db_subscriptions(user_id,status,starts_at,expires_at) VALUES (1,'active','2026-01-01','2027-01-01')");
@@ -34,7 +34,7 @@ try {
     foreach (['db_tokens','db_sessions','db_session_days','db_demo_access','db_subscription_events'] as $table) check((int)$db->query("SELECT COUNT(*) FROM $table")->fetchColumn()===1, 'Re-import changed saved records.');
     $db->exec('DELETE FROM db_users WHERE id=1');
     foreach (['db_tokens','db_sessions','db_session_days','db_demo_access','db_subscription_events'] as $table) check((int)$db->query("SELECT COUNT(*) FROM $table")->fetchColumn()===0, 'Missing delete cascade.');
-    echo "PASS: one-file import, all 9 tables, IDR 25000 seed, repeat-import data/access/price preservation, inactive backfill, and foreign-key cascades.\n";
+    echo "PASS: one-file import, all 12 tables, IDR 50000 seed, repeat-import data/access/price preservation, inactive backfill, and foreign-key cascades.\n";
 } finally {
     // Only the random test database checked above is removed.
     $db->exec("DROP DATABASE IF EXISTS `$name`");

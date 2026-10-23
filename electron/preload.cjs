@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("degreebee", {
+  support: (action,input) => ipcRenderer.invoke('support:request',action,input),
   accountAuth: (kind,input) => ipcRenderer.invoke('account:auth',kind,input),
   accountLogout: () => ipcRenderer.invoke('account:logout'),
   accountSync: () => ipcRenderer.invoke('account:sync'),

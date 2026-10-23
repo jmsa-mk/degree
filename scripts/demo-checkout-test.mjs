@@ -15,14 +15,14 @@ try{
  app=await electron.launch({args:['.','--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream'],env});let page=await app.firstWindow();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await signInMember(page,member);await page.getByRole('button',{name:'Get monthly access',exact:true}).click();
  const modal=page.getByRole('dialog',{name:'Your next month of focus.'});await modal.waitFor();
- assert.match(await modal.innerText(),/25\.000/);assert.match(await modal.innerText(),/nothing to pay/);
+ assert.match(await modal.innerText(),/50\.000/);assert.match(await modal.innerText(),/nothing to pay/);
  assert.equal(await modal.locator('img').evaluate(img=>img.complete&&img.naturalWidth>0),true);
  await modal.screenshot({path:path.resolve('test-output/demo-checkout-light.png')});
  await modal.getByRole('button',{name:'Cancel',exact:true}).click();assert.equal((await page.evaluate(()=>window.degreebee.state())).account.subscription.active,false);
  await page.getByRole('button',{name:'Dark Mode',exact:true}).click();await page.getByRole('button',{name:'Get monthly access',exact:true}).click();
  await modal.screenshot({path:path.resolve('test-output/demo-checkout-dark.png')});
  await modal.getByRole('button',{name:'Confirm demo payment',exact:true}).click();
- const activated=await waitForState(page,s=>s.account.subscription?.active);assert.equal(activated.account.subscription.plan.priceRupiah,25000);assert.equal(activated.account.subscription.accessSource,'demo');
+ const activated=await waitForState(page,s=>s.account.subscription?.active);assert.equal(activated.account.subscription.plan.priceRupiah,50000);assert.equal(activated.account.subscription.accessSource,'demo');
  assert.ok(Date.parse(activated.account.subscription.expiresAt)-Date.now()>27*86400000);
  const retry=await request('/demo/activate',{confirmDemo:true,price:1,userId:'not-the-current-user'});assert.equal(retry.status,200);assert.equal(retry.data.subscription.expiresAt,activated.account.subscription.expiresAt);
  await page.getByRole('button',{name:'Start focus',exact:true}).click();await page.getByText('Camera active · local').waitFor({timeout:60000});

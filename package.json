@@ -1,6 +1,6 @@
 {
   "name": "degreebee-focus",
-  "version": "2.2.1",
+  "version": "2.3.1",
   "description": "DegreeBee Focus - desktop monitoring, personal progress and study league",
   "author": "DegreeBee",
   "private": true,
@@ -18,7 +18,9 @@
     "test:accounts": "node scripts/account-api-test.mjs",
     "test:community": "node scripts/community-test.mjs",
     "test:subscriptions": "node scripts/subscription-test.mjs",
-    "test:demo": "node scripts/demo-checkout-test.mjs"
+    "test:demo": "node scripts/demo-checkout-test.mjs",
+    "test:support": "node scripts/support-test.mjs",
+    "test:support-ui": "node scripts/support-ui-test.mjs"
   },
   "devDependencies": {
     "@mediapipe/tasks-vision": "0.10.35",
